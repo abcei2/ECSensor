@@ -214,7 +214,9 @@ void ecUp(int dropTime)
 
 int get_desired_EC()
 {
-  return map(analogRead(POT_PIN), 0, 1023, 900, 1300);
+  //return map(analogRead(POT_PIN), 0, 1023, 900, 1300);
+
+  return 1500;
 }
 //************ This Loop Is called From Main Loop************************//
 
