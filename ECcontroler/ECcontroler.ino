@@ -152,7 +152,7 @@ void loop()
           error = desiredPPM - ppm;
           check_for_command();
         }
-      } while (abs(error) > STABILIZATION_MARGIN);
+      } while (error > STABILIZATION_MARGIN);
     }
   }
   delay(SLEEPING_TIME);
