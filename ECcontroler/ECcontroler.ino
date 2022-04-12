@@ -5,6 +5,8 @@
 #include <TM1637.h>
 #include <Arduino_JSON.h>
 
+#define WHOAMI "EC"
+
 #define M_EC_UP 11
 #define M_EC_UP_SPEED 230
 #define ZERO_SPEED 0
@@ -19,7 +21,7 @@
 #define MINUTE 1000L * 60
 #define STABILIZATION_TIME 1 * MINUTE
 
-#define SLEEPING_TIME 100
+#define SLEEPING_TIME 1000
 // EC Sensor conf
 
 #define EC_PIN A0
@@ -61,7 +63,6 @@ int desiredPPM = 0;
 int error = 0;
 
 boolean manualMode = false;
-JSONVar Data;
 
 float raw = 0;
 float Vin = 5;
@@ -113,17 +114,13 @@ void setup()
 void loop()
 {
 
-  //displayEC((int)(EC25*1000));
-
-  ppm = GetEC();
-  desiredPPM = get_desired_EC();
-  displayValue(ppm, "sense");
-  displayValue(desiredPPM, "desired");
+  get_measure_error_and_show();
+  print_measure_and_setpoint();
   check_for_command();
 
   if (!manualMode)
   {
-    error = desiredPPM - ppm;
+    
 
     if (error > ERR_MARGIN)
     {
@@ -132,24 +129,15 @@ void loop()
         if (error > 0)
         {
           ecUp(DROP_TIME);
-          Serial.println("Going UP!");
         }
 
         long start = millis();
         while (millis() - start < STABILIZATION_TIME)
         {
-          delay(100);
+          delay(SLEEPING_TIME);
 
-          ppm = GetEC();
-          desiredPPM = get_desired_EC();
-          displayValue(ppm, "sense");
-          displayValue(desiredPPM, "desired");
-          Serial.print("ppm: ");
-          Serial.print(ppm);
-          Serial.print("\t\tdesiredPPM: ");
-          Serial.println(desiredPPM);
-
-          error = desiredPPM - ppm;
+          get_measure_error_and_show();
+          print_measure_and_setpoint();
           check_for_command();
         }
       } while (error > STABILIZATION_MARGIN);
@@ -159,6 +147,25 @@ void loop()
 }
 //************************************** End Of Main Loop **********************************************************************//
 
+void get_measure_error_and_show(){
+  ppm = GetEC();
+  desiredPPM = get_desired_EC();
+  displayValue(ppm, "sense");
+  displayValue(desiredPPM, "desired");    
+  error = desiredPPM - ppm;
+}
+
+void print_measure_and_setpoint(){
+  
+  JSONVar Data;
+  Data["WHOAMI"] = WHOAMI;
+  Data["TASK"] = "READ";
+  Data["VALUE"] = ppm;
+  Data["DESIRED"] = desiredPPM;
+  Data["TEMP"] = Temperature;
+  Serial.println(Data);
+  
+}
 void check_for_command()
 {
   if (Serial.available() > 0)
@@ -166,13 +173,14 @@ void check_for_command()
 
     String msg = Serial.readString();
     JSONVar myObject = JSON.parse(msg);
+    JSONVar Data;
     String command = "NONE";
     command = myObject["COMMAND"];
     if (command.equals("ECREAD"))
     {
-      Data["PPM"] = GetEC();
+      Data["VALUE"] = GetEC();
       Data["Temperature"] = Temperature;
-      Data["DESIRED_PPM"] = get_desired_EC();
+      Data["DESIRED"] = get_desired_EC();
       Data["ACK"] = "DONE";
       Data["MSG"] = msg;
     }
@@ -180,14 +188,14 @@ void check_for_command()
     {
       int dropTime = myObject["DROP_TIME"];
       ecUp(dropTime);
-      Data["MSG"] = msg;
       Data["ACK"] = "DONE";
+      Data["MSG"] = msg;
     }
     else if (command.equals("AUTO"))
     {
       manualMode = false;
-      Data["MSG"] = msg;
       Data["ACK"] = "DONE";
+      Data["MSG"] = msg;
     }
     else if (command.equals("MANUAL"))
     {
@@ -195,10 +203,14 @@ void check_for_command()
       Data["MSG"] = msg;
       Data["ACK"] = "DONE";
     }
-    else
-    {
-      Data["ACK"] = "ERROR";
-      Data["MSG"] = msg;
+    else if (command.equals("WHOAMI")) {               
+        Data["WHOAMI"] = WHOAMI;
+        Data["ACK"] = "DONE";
+        Data["MSG"] = msg;
+    }
+    else {
+        Data["ACK"] = "ERROR";
+        Data["MSG"] = msg;
     }
 
     Serial.println(JSON.stringify(Data));
@@ -207,6 +219,11 @@ void check_for_command()
 
 void ecUp(int dropTime)
 { //M_EC_UP_SPEED
+  JSONVar Data;   
+  Data["WHOAMI"]=WHOAMI;
+  Data["TASK"]="CONTROL";
+  Data["GOING"]="UP";
+  Serial.println(JSON.stringify(Data));
   analogWrite(M_EC_UP, M_EC_UP_SPEED);
   delay(dropTime);
   analogWrite(M_EC_UP, ZERO_SPEED);
