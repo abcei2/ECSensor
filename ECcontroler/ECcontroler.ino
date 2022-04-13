@@ -32,7 +32,7 @@
 #define TEMP_COEF 0.019
 
 //Cell Constant For Ec Measurements
-#define K 2.45
+#define K 3.52
 
 //##################################################################################
 //-----------  Do not Replace R1 with a resistor lower than 300 ohms    ------------
