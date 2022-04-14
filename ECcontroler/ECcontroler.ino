@@ -232,6 +232,8 @@ void ecUp(int dropTime)
   Data["WHOAMI"]=WHOAMI;
   Data["TASK"]="CONTROL";
   Data["GOING"]="UP";
+  Data["VALUE"]=ppm;
+  Data["DESIRED"]=desiredPPM;
   Serial.println(JSON.stringify(Data));
   analogWrite(M_EC_UP, M_EC_UP_SPEED);
   delay(dropTime);
