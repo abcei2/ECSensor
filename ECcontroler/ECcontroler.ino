@@ -33,6 +33,10 @@
 
 //Cell Constant For Ec Measurements
 #define K 3.52
+#define SERIAL_WRITE_TIME 1 * MINUTE
+
+
+float serialWriteTimer;
 
 //##################################################################################
 //-----------  Do not Replace R1 with a resistor lower than 300 ohms    ------------
@@ -106,6 +110,8 @@ void setup()
   desirdedECDisplay.set(2);
   pinMode(POT_PIN, INPUT);
   delay_timer = -10000;
+  
+  serialWriteTimer = millis();
 }
 //******************************************* End of Setup **********************************************************************//
 
@@ -134,11 +140,12 @@ void loop()
         long start = millis();
         while (millis() - start < STABILIZATION_TIME)
         {
-          delay(SLEEPING_TIME);
 
           get_measure_error_and_show();
           print_measure_and_setpoint();
           check_for_command();
+          
+          delay(SLEEPING_TIME);
         }
       } while (error > STABILIZATION_MARGIN);
     }
@@ -157,14 +164,16 @@ void get_measure_error_and_show(){
 
 void print_measure_and_setpoint(){
   
-  JSONVar Data;
-  Data["WHOAMI"] = WHOAMI;
-  Data["TASK"] = "READ";
-  Data["VALUE"] = ppm;
-  Data["DESIRED"] = desiredPPM;
-  Data["TEMP"] = Temperature;
-  Serial.println(Data);
-  
+  if(millis()-serialWriteTimer > SERIAL_WRITE_TIME){
+    serialWriteTimer = millis();
+    JSONVar Data;
+    Data["WHOAMI"] = WHOAMI;
+    Data["TASK"] = "READ";
+    Data["VALUE"] = ppm;
+    Data["DESIRED"] = desiredPPM;
+    Data["TEMP"] = Temperature;
+    Serial.println(Data);
+  } 
 }
 void check_for_command()
 {
